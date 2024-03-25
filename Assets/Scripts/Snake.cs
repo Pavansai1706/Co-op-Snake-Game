@@ -1,30 +1,34 @@
-using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
+using System.Collections.Generic;
 
 public class Snake : MonoBehaviour
 {
     private Vector2 _direction = Vector2.right;
     private Vector2 _screenBounds;
     private int _score = 0;
-    private int _highScore = 0; // Add high score variable
+    private int _highScore = 0;
     private bool _isGameOver = false;
+    private bool _isShieldActive = false;
+    private bool _isSpeedUpActive = false;
+    private bool _isScoreBoostActive = false; // Added score boost variable
+    private float _speedUpDuration = 5f;
+    private float _speedUpMultiplier = 2f;
+    private float _scoreBoostDuration = 10f; // Duration of score boost power-up in seconds
 
-    private List<Transform> _segments = new List<Transform>();
     [SerializeField] private int initialSize = 3;
     [SerializeField] private Transform segmentPrefab;
     [SerializeField] private int scoreValue = 10;
     [SerializeField] private TextMeshProUGUI scoreText;
-    [SerializeField] private TextMeshProUGUI highScoreText; // Reference to high score text
-    [SerializeField] private GameObject gameOverPanel; // Reference to game over UI panel
+    [SerializeField] private TextMeshProUGUI highScoreText;
+    [SerializeField] private GameObject gameOverPanel;
+
+    private List<Transform> _segments = new List<Transform>();
 
     private void Start()
     {
         ResetState();
-
         _screenBounds = Camera.main.ScreenToWorldPoint(new Vector3(Screen.width, Screen.height, Camera.main.transform.position.z));
-
-        // Load high score from PlayerPrefs
         _highScore = PlayerPrefs.GetInt("HighScore", 0);
         UpdateHighScoreText();
     }
@@ -61,10 +65,8 @@ public class Snake : MonoBehaviour
                 _segments[i].position = _segments[i - 1].position;
             }
 
-            // Calculate the new position based on the current position and direction
             Vector3 newPosition = transform.position + (Vector3)_direction;
 
-            // Wrap around the screen if the snake moves beyond the screen boundaries
             if (newPosition.x > _screenBounds.x)
                 newPosition.x = -_screenBounds.x;
             else if (newPosition.x < -_screenBounds.x)
@@ -75,23 +77,20 @@ public class Snake : MonoBehaviour
             else if (newPosition.y < -_screenBounds.y)
                 newPosition.y = _screenBounds.y;
 
-            // Update the position
             transform.position = newPosition;
         }
     }
 
     private void Grow()
     {
-        Transform segment = Instantiate(this.segmentPrefab);
+        Transform segment = Instantiate(segmentPrefab);
         segment.position = _segments[_segments.Count - 1].position;
-
         _segments.Add(segment);
 
-        // Increment score
-        _score += scoreValue;
+        // Increment score with or without score boost
+        _score += _isScoreBoostActive ? scoreValue * 2 : scoreValue;
         UpdateScoreText();
 
-        // Update high score if needed
         if (_score > _highScore)
         {
             _highScore = _score;
@@ -106,20 +105,17 @@ public class Snake : MonoBehaviour
             Destroy(_segments[i].gameObject);
         }
         _segments.Clear();
-        _segments.Add(this.transform);
+        _segments.Add(transform);
 
-        for (int i = 1; i < this.initialSize; i++)
+        for (int i = 1; i < initialSize; i++)
         {
-            _segments.Add(Instantiate(this.segmentPrefab));
+            _segments.Add(Instantiate(segmentPrefab));
         }
 
-        this.transform.position = Vector3.zero;
+        transform.position = Vector3.zero;
 
-        // Reset score
         _score = 0;
         UpdateScoreText();
-
-        // Reset game over state
         _isGameOver = false;
         if (gameOverPanel != null)
         {
@@ -131,16 +127,73 @@ public class Snake : MonoBehaviour
     {
         if (!_isGameOver)
         {
-            if (other.tag == "Food")
+            if (other.CompareTag("Food"))
             {
                 Grow();
             }
-            else if (other.tag == "Obstacle" || other.tag == "SnakeBody")
+            else if (other.CompareTag("Obstacle") || other.CompareTag("Player"))
             {
                 GameOver();
             }
+            else if (other.CompareTag("PowerUp"))
+            {
+                PowerUp powerUp = other.GetComponent<PowerUp>();
+                if (powerUp != null)
+                {
+                    ActivatePowerUp(powerUp.powerUpType);
+                    Destroy(other.gameObject);
+                }
+            }
         }
     }
+
+    public void ActivatePowerUp(PowerUp.PowerUpType powerUpType)
+    {
+        switch (powerUpType)
+        {
+            case PowerUp.PowerUpType.Shield:
+                ActivateShield();
+                break;
+            case PowerUp.PowerUpType.ScoreBoost:
+                ActivateScoreBoost();
+                break;
+            case PowerUp.PowerUpType.Speed:
+                ActivateSpeedUp();
+                break;
+        }
+    }
+
+    private void ActivateShield()
+    {
+        _isShieldActive = true;
+        Debug.Log("Shield activated!");
+        // Add code here to visually represent the shield effect if needed
+    }
+
+    private void ActivateSpeedUp()
+    {
+        _isSpeedUpActive = true;
+        _speedUpMultiplier = 2.0f; // Double the speed
+        Invoke("DeactivateSpeedUp", _speedUpDuration); // Deactivate speed-up after duration
+    }
+
+    private void DeactivateSpeedUp()
+    {
+        _isSpeedUpActive = false;
+        _speedUpMultiplier = 1.0f; // Reset speed to normal
+    }
+
+    private void ActivateScoreBoost()
+    {
+        _isScoreBoostActive = true;
+        Invoke("DeactivateScoreBoost", _scoreBoostDuration); // Deactivate score boost after duration
+    }
+
+    private void DeactivateScoreBoost()
+    {
+        _isScoreBoostActive = false;
+    }
+
 
     private void UpdateScoreText()
     {
@@ -171,11 +224,11 @@ public class Snake : MonoBehaviour
         {
             gameOverPanel.SetActive(true);
         }
-        SaveHighScore(); // Save high score when game over
+        SaveHighScore();
     }
 
     private void OnDestroy()
     {
-        SaveHighScore(); // Save high score when the game object is destroyed (e.g., when quitting the game)
+        SaveHighScore();
     }
 }
