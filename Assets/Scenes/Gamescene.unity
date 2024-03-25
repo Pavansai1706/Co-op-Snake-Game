@@ -155,6 +155,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 409a67e7f8d36664ebef6cbb1d1ca599, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  initialSize: 3
   segmentPrefab: {fileID: 1306011931236371215, guid: ad1f2374fea60614f8050ef58becff86, type: 3}
 --- !u!50 &49278886
 Rigidbody2D:
@@ -311,7 +312,7 @@ BoxCollider2D:
     adaptiveTiling: 0
   m_AutoTiling: 0
   serializedVersion: 2
-  m_Size: {x: 36.27, y: 15.42}
+  m_Size: {x: 61.27, y: 26.3}
   m_EdgeRadius: 0
 --- !u!4 &493721638
 Transform:
@@ -381,7 +382,7 @@ Camera:
   far clip plane: 1000
   field of view: 60
   orthographic: 1
-  orthographic size: 9.149477
+  orthographic size: 16.305988
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2

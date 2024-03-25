@@ -1,22 +1,30 @@
 using System.Collections.Generic;
 using UnityEngine;
+using TMPro;
 
 public class Snake : MonoBehaviour
 {
     private Vector2 _direction = Vector2.right;
     private Vector2 _screenBounds;
+    private int _score = 0;
+    private int _highScore = 0; // Add high score variable
 
     private List<Transform> _segments = new List<Transform>();
     [SerializeField] private int initialSize = 3;
     [SerializeField] private Transform segmentPrefab;
-   
-
+    [SerializeField] private int scoreValue = 10;
+    [SerializeField] private TextMeshProUGUI scoreText;
+    [SerializeField] private TextMeshProUGUI highScoreText; // Reference to high score text
 
     private void Start()
     {
         ResetState();
 
         _screenBounds = Camera.main.ScreenToWorldPoint(new Vector3(Screen.width, Screen.height, Camera.main.transform.position.z));
+
+        // Load high score from PlayerPrefs
+        _highScore = PlayerPrefs.GetInt("HighScore", 0);
+        UpdateHighScoreText();
     }
 
     private void Update()
@@ -41,8 +49,7 @@ public class Snake : MonoBehaviour
 
     private void FixedUpdate()
     {
-
-        for(int i = _segments.Count -1; i > 0; i--)
+        for (int i = _segments.Count - 1; i > 0; i--)
         {
             _segments[i].position = _segments[i - 1].position;
         }
@@ -71,23 +78,38 @@ public class Snake : MonoBehaviour
         segment.position = _segments[_segments.Count - 1].position;
 
         _segments.Add(segment);
+
+        // Increment score
+        _score += scoreValue;
+        UpdateScoreText();
+
+        // Update high score if needed
+        if (_score > _highScore)
+        {
+            _highScore = _score;
+            UpdateHighScoreText();
+        }
     }
 
     private void ResetState()
     {
-        for (int i =1; i < _segments.Count; i++)
+        for (int i = 1; i < _segments.Count; i++)
         {
             Destroy(_segments[i].gameObject);
         }
         _segments.Clear();
         _segments.Add(this.transform);
 
-        for (int i =1; i < this.initialSize; i++)
+        for (int i = 1; i < this.initialSize; i++)
         {
             _segments.Add(Instantiate(this.segmentPrefab));
         }
 
         this.transform.position = Vector3.zero;
+
+        // Reset score
+        _score = 0;
+        UpdateScoreText();
     }
 
     private void OnTriggerEnter2D(Collider2D other)
@@ -96,8 +118,37 @@ public class Snake : MonoBehaviour
         {
             Grow();
         }
-        else if (other.tag == "Obstacle"){
+        else if (other.tag == "Obstacle")
+        {
             ResetState();
         }
+    }
+
+    private void UpdateScoreText()
+    {
+        if (scoreText != null)
+        {
+            scoreText.text = "Score: " + _score.ToString();
+        }
+    }
+
+    private void UpdateHighScoreText()
+    {
+        if (highScoreText != null)
+        {
+            highScoreText.text = "High Score: " + _highScore.ToString();
+        }
+    }
+
+    private void SaveHighScore()
+    {
+        PlayerPrefs.SetInt("HighScore", _highScore);
+        PlayerPrefs.Save();
+    }
+
+    private void OnDestroy()
+    {
+        // Save high score when the game object is destroyed (e.g., when quitting the game)
+        SaveHighScore();
     }
 }
