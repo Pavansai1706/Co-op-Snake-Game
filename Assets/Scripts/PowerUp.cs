@@ -21,7 +21,8 @@ public class PowerUp : MonoBehaviour
                 // Instead of calling methods directly, let the Snake class handle power-up activation
                 snake.ActivatePowerUp(powerUpType);
 
-                Destroy(gameObject);
+                // Deactivate the power-up object instead of destroying it
+                gameObject.SetActive(false);
             }
         }
     }

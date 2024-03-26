@@ -3,7 +3,11 @@ guid: 409a67e7f8d36664ebef6cbb1d1ca599
 MonoImporter:
   externalObjects: {}
   serializedVersion: 2
-  defaultReferences: []
+  defaultReferences:
+  - segmentPrefab: {fileID: 1306011931236371215, guid: ad1f2374fea60614f8050ef58becff86, type: 3}
+  - scoreText: {instanceID: 0}
+  - highScoreText: {instanceID: 0}
+  - gameOverPanel: {instanceID: 0}
   executionOrder: 0
   icon: {instanceID: 0}
   userData: 

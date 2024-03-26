@@ -1,5 +1,6 @@
 using UnityEngine;
 using TMPro;
+using System.Collections;
 using System.Collections.Generic;
 
 public class Snake : MonoBehaviour
@@ -11,14 +12,17 @@ public class Snake : MonoBehaviour
     private bool _isGameOver = false;
     private bool _isShieldActive = false;
     private bool _isSpeedUpActive = false;
-    private bool _isScoreBoostActive = false; // Added score boost variable
+    private bool _isScoreBoostActive = false;
     private float _speedUpDuration = 5f;
     private float _speedUpMultiplier = 2f;
-    private float _scoreBoostDuration = 10f; // Duration of score boost power-up in seconds
+    private float _scoreBoostDuration = 10f;
+    private bool _isCooldownActive = false;
+    private float _deathCooldownDuration = 2f;
 
     [SerializeField] private int initialSize = 3;
     [SerializeField] private Transform segmentPrefab;
-    [SerializeField] private int scoreValue = 10;
+    [SerializeField] private int foodScoreValue = 10; // Score value for food
+    [SerializeField] private int scoreBoosterMultiplier = 2; // Multiplier for score booster
     [SerializeField] private TextMeshProUGUI scoreText;
     [SerializeField] private TextMeshProUGUI highScoreText;
     [SerializeField] private GameObject gameOverPanel;
@@ -60,12 +64,14 @@ public class Snake : MonoBehaviour
     {
         if (!_isGameOver)
         {
+            float movementSpeed = (_isSpeedUpActive) ? _speedUpMultiplier : 1f;
+
             for (int i = _segments.Count - 1; i > 0; i--)
             {
                 _segments[i].position = _segments[i - 1].position;
             }
 
-            Vector3 newPosition = transform.position + (Vector3)_direction;
+            Vector3 newPosition = transform.position + (Vector3)_direction * movementSpeed;
 
             if (newPosition.x > _screenBounds.x)
                 newPosition.x = -_screenBounds.x;
@@ -87,8 +93,16 @@ public class Snake : MonoBehaviour
         segment.position = _segments[_segments.Count - 1].position;
         _segments.Add(segment);
 
-        // Increment score with or without score boost
-        _score += _isScoreBoostActive ? scoreValue * 2 : scoreValue;
+        // Update the segments list to include the new segment
+        _segments[_segments.Count - 1].position = _segments[_segments.Count - 2].position;
+
+        IncrementScore(_isScoreBoostActive ? foodScoreValue * scoreBoosterMultiplier : foodScoreValue); // Increment score with score booster effect
+    }
+
+
+    private void IncrementScore(int value)
+    {
+        _score += value;
         UpdateScoreText();
 
         if (_score > _highScore)
@@ -127,25 +141,36 @@ public class Snake : MonoBehaviour
     {
         if (!_isGameOver)
         {
-            if (other.CompareTag("Food"))
+            if (!_isShieldActive)
             {
-                Grow();
-            }
-            else if (other.CompareTag("Obstacle") || other.CompareTag("Player"))
-            {
-                GameOver();
+                if (other.CompareTag("Food"))
+                {
+                    Grow();
+                }
+                else if (other.CompareTag("Obstacle") || other.CompareTag("Player"))
+                {
+                    if (!_isCooldownActive)
+                    {
+                        GameOver();
+                    }
+                }
             }
             else if (other.CompareTag("PowerUp"))
             {
                 PowerUp powerUp = other.GetComponent<PowerUp>();
                 if (powerUp != null)
                 {
-                    ActivatePowerUp(powerUp.powerUpType);
-                    Destroy(other.gameObject);
+                    // Check if the power-up is a score booster
+                    if (powerUp.powerUpType == PowerUp.PowerUpType.ScoreBoost)
+                    {
+                        ActivateScoreBoost(); // Activate the score booster
+                    }
+                    
                 }
             }
         }
     }
+
 
     public void ActivatePowerUp(PowerUp.PowerUpType powerUpType)
     {
@@ -163,37 +188,70 @@ public class Snake : MonoBehaviour
         }
     }
 
+    private IEnumerator DeactivateShieldCoroutine()
+    {
+        yield return new WaitForSeconds(_deathCooldownDuration);
+        _isShieldActive = false;
+        Debug.Log("Shield deactivated!");
+    }
+
+    private IEnumerator DeactivateSpeedUpCoroutine()
+    {
+        yield return new WaitForSeconds(_speedUpDuration);
+        _isSpeedUpActive = false;
+        Debug.Log("Speed Up deactivated!");
+    }
+
+    private IEnumerator DeactivateScoreBoostCoroutine()
+    {
+        yield return new WaitForSeconds(_scoreBoostDuration);
+        _isScoreBoostActive = false;
+        Debug.Log("Score Boost deactivated!");
+    }
+
     private void ActivateShield()
     {
         _isShieldActive = true;
         Debug.Log("Shield activated!");
-        // Add code here to visually represent the shield effect if needed
+        StartCoroutine(DeactivateShieldCoroutine());
     }
 
     private void ActivateSpeedUp()
     {
         _isSpeedUpActive = true;
-        _speedUpMultiplier = 2.0f; // Double the speed
-        Invoke("DeactivateSpeedUp", _speedUpDuration); // Deactivate speed-up after duration
-    }
-
-    private void DeactivateSpeedUp()
-    {
-        _isSpeedUpActive = false;
-        _speedUpMultiplier = 1.0f; // Reset speed to normal
+        Debug.Log("Speed Up activated!");
+        StartCoroutine(DeactivateSpeedUpCoroutine());
     }
 
     private void ActivateScoreBoost()
     {
-        _isScoreBoostActive = true;
-        Invoke("DeactivateScoreBoost", _scoreBoostDuration); // Deactivate score boost after duration
+        if (!_isScoreBoostActive) // Check if score boost is not already active
+        {
+            _isScoreBoostActive = true;
+            Debug.Log("Score Boost activated!");
+            IncrementScore(foodScoreValue); // Increment score with +10
+            Grow(); // Grow the snake
+            StartCoroutine(DeactivateScoreBoostCoroutine());
+        }
+        else
+        {
+            // Score boost is already active
+            Debug.Log("Score Boost is already active!");
+        }
     }
 
     private void DeactivateScoreBoost()
     {
         _isScoreBoostActive = false;
+        Debug.Log("Score Boost deactivated!");
     }
 
+    private IEnumerator DeathCooldown()
+    {
+        _isCooldownActive = true;
+        yield return new WaitForSeconds(_deathCooldownDuration);
+        _isCooldownActive = false;
+    }
 
     private void UpdateScoreText()
     {
