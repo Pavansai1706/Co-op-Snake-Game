@@ -7,6 +7,7 @@ public class Snake : MonoBehaviour
 {
     private Vector2 _direction = Vector2.right;
     private Vector2 _screenBounds;
+    private List<Transform> _segments = new List<Transform>();
     private int _score = 0;
     private int _highScore = 0;
     private bool _isGameOver = false;
@@ -20,6 +21,7 @@ public class Snake : MonoBehaviour
     private float _massBurnerDuration = 10f;
     private bool _isCooldownActive = false;
     private float _deathCooldownDuration = 2f;
+    private Transform _foodInstance;
 
     [SerializeField] private int initialSize = 3;
     [SerializeField] private Transform segmentPrefab;
@@ -28,10 +30,10 @@ public class Snake : MonoBehaviour
     [SerializeField] private int scoreBoosterMultiplier = 2;
     [SerializeField] private TextMeshProUGUI scoreText;
     [SerializeField] private TextMeshProUGUI highScoreText;
+    [SerializeField] private TextMeshProUGUI powerUpText; // UI Text object for power-up messages
     [SerializeField] private GameObject gameOverPanel;
 
-    private List<Transform> _segments = new List<Transform>();
-    private Transform _foodInstance;
+  
 
     private void Start()
     {
@@ -39,6 +41,7 @@ public class Snake : MonoBehaviour
         _screenBounds = Camera.main.ScreenToWorldPoint(new Vector3(Screen.width, Screen.height, Camera.main.transform.position.z));
         _highScore = PlayerPrefs.GetInt("HighScore", 0);
         UpdateHighScoreText();
+        powerUpText.text = ""; // Initially clear the power-up text
     }
 
     private void Update()
@@ -232,41 +235,43 @@ public class Snake : MonoBehaviour
     {
         yield return new WaitForSeconds(_deathCooldownDuration);
         _isShieldActive = false;
-        Debug.Log("Shield deactivated!");
+        
     }
 
     private IEnumerator DeactivateSpeedUpCoroutine()
     {
         yield return new WaitForSeconds(_speedUpDuration);
         _isSpeedUpActive = false;
-        Debug.Log("Speed Up deactivated!");
+        
     }
 
     private IEnumerator DeactivateScoreBoostCoroutine()
     {
         yield return new WaitForSeconds(_scoreBoostDuration);
         _isScoreBoostActive = false;
-        Debug.Log("Score Boost deactivated!");
+       
     }
 
     private IEnumerator DeactivateMassBurnerCoroutine()
     {
         yield return new WaitForSeconds(_massBurnerDuration);
         _isMassBurnerActive = false;
-        Debug.Log("Mass Burner deactivated!");
+        
     }
 
     private void ActivateShield()
     {
         _isShieldActive = true;
-        Debug.Log("Shield activated!");
+        powerUpText.text = "Shield Activated!";
+        StartCoroutine(ClearPowerUpText());
         StartCoroutine(DeactivateShieldCoroutine());
     }
 
     private void ActivateSpeedUp()
     {
         _isSpeedUpActive = true;
-        Debug.Log("Speed Up activated!");
+        powerUpText.text = "Speed Up Activated!";
+        StartCoroutine(ClearPowerUpText());
         StartCoroutine(DeactivateSpeedUpCoroutine());
     }
 
@@ -275,21 +280,23 @@ public class Snake : MonoBehaviour
         if (!_isScoreBoostActive)
         {
             _isScoreBoostActive = true;
-            Debug.Log("Score Boost activated!");
+            powerUpText.text = "Score Boost Activated!";
+            StartCoroutine(ClearPowerUpText());
             IncrementScore(foodScoreValue);
             Grow();
             StartCoroutine(DeactivateScoreBoostCoroutine());
         }
         else
         {
-            Debug.Log("Score Boost is already active!");
+            powerUpText.text = "Score Boost is already active!";
+            StartCoroutine(ClearPowerUpText());
         }
     }
 
-    private void DeactivateScoreBoost()
+    private IEnumerator ClearPowerUpText()
     {
-        _isScoreBoostActive = false;
-        Debug.Log("Score Boost deactivated!");
+        yield return new WaitForSeconds(2f); // Adjust the duration as needed
+        powerUpText.text = "";
     }
 
     private IEnumerator DeathCooldown()
@@ -306,7 +313,7 @@ public class Snake : MonoBehaviour
             scoreText.text = "Score: " + _score.ToString();
         }
     }
-
+    
     private void UpdateHighScoreText()
     {
         if (highScoreText != null)
@@ -320,7 +327,13 @@ public class Snake : MonoBehaviour
         PlayerPrefs.SetInt("HighScore", _highScore);
         PlayerPrefs.Save();
     }
-
+    private void ResetHighScore()
+    {
+        _highScore = 0;
+        UpdateHighScoreText();
+        PlayerPrefs.SetInt("HighScore", _highScore);
+        PlayerPrefs.Save();
+    }
     private void GameOver()
     {
         _isGameOver = true;
