@@ -13,21 +13,25 @@ public class Snake : MonoBehaviour
     private bool _isShieldActive = false;
     private bool _isSpeedUpActive = false;
     private bool _isScoreBoostActive = false;
+    private bool _isMassBurnerActive = false;
     private float _speedUpDuration = 5f;
     private float _speedUpMultiplier = 2f;
     private float _scoreBoostDuration = 10f;
+    private float _massBurnerDuration = 10f;
     private bool _isCooldownActive = false;
     private float _deathCooldownDuration = 2f;
 
     [SerializeField] private int initialSize = 3;
     [SerializeField] private Transform segmentPrefab;
-    [SerializeField] private int foodScoreValue = 10; // Score value for food
-    [SerializeField] private int scoreBoosterMultiplier = 2; // Multiplier for score booster
+    [SerializeField] private GameObject foodPrefab;
+    [SerializeField] private int foodScoreValue = 10;
+    [SerializeField] private int scoreBoosterMultiplier = 2;
     [SerializeField] private TextMeshProUGUI scoreText;
     [SerializeField] private TextMeshProUGUI highScoreText;
     [SerializeField] private GameObject gameOverPanel;
 
     private List<Transform> _segments = new List<Transform>();
+    private Transform _foodInstance;
 
     private void Start()
     {
@@ -41,21 +45,43 @@ public class Snake : MonoBehaviour
     {
         if (!_isGameOver)
         {
-            if (Input.GetKeyDown(KeyCode.W))
+            if (gameObject.tag == "Player")
             {
-                _direction = Vector2.up;
+                if (Input.GetKeyDown(KeyCode.W) && _direction != Vector2.down)
+                {
+                    _direction = Vector2.up;
+                }
+                else if (Input.GetKeyDown(KeyCode.S) && _direction != Vector2.up)
+                {
+                    _direction = Vector2.down;
+                }
+                else if (Input.GetKeyDown(KeyCode.A) && _direction != Vector2.right)
+                {
+                    _direction = Vector2.left;
+                }
+                else if (Input.GetKeyDown(KeyCode.D) && _direction != Vector2.left)
+                {
+                    _direction = Vector2.right;
+                }
             }
-            else if (Input.GetKeyDown(KeyCode.S))
+            else if (gameObject.tag == "Player2")
             {
-                _direction = Vector2.down;
-            }
-            else if (Input.GetKeyDown(KeyCode.A))
-            {
-                _direction = Vector2.left;
-            }
-            else if (Input.GetKeyDown(KeyCode.D))
-            {
-                _direction = Vector2.right;
+                if (Input.GetKeyDown(KeyCode.UpArrow) && _direction != Vector2.down)
+                {
+                    _direction = Vector2.up;
+                }
+                else if (Input.GetKeyDown(KeyCode.DownArrow) && _direction != Vector2.up)
+                {
+                    _direction = Vector2.down;
+                }
+                else if (Input.GetKeyDown(KeyCode.LeftArrow) && _direction != Vector2.right)
+                {
+                    _direction = Vector2.left;
+                }
+                else if (Input.GetKeyDown(KeyCode.RightArrow) && _direction != Vector2.left)
+                {
+                    _direction = Vector2.right;
+                }
             }
         }
     }
@@ -93,12 +119,8 @@ public class Snake : MonoBehaviour
         segment.position = _segments[_segments.Count - 1].position;
         _segments.Add(segment);
 
-        // Update the segments list to include the new segment
-        _segments[_segments.Count - 1].position = _segments[_segments.Count - 2].position;
-
-        IncrementScore(_isScoreBoostActive ? foodScoreValue * scoreBoosterMultiplier : foodScoreValue); // Increment score with score booster effect
+        IncrementScore(_isScoreBoostActive ? foodScoreValue * scoreBoosterMultiplier : foodScoreValue);
     }
-
 
     private void IncrementScore(int value)
     {
@@ -126,7 +148,14 @@ public class Snake : MonoBehaviour
             _segments.Add(Instantiate(segmentPrefab));
         }
 
-        transform.position = Vector3.zero;
+        if (gameObject.tag == "Player2")
+        {
+            transform.position = new Vector3(5f, 0f, 0f);
+        }
+        else
+        {
+            transform.position = Vector3.zero;
+        }
 
         _score = 0;
         UpdateScoreText();
@@ -146,31 +175,42 @@ public class Snake : MonoBehaviour
                 if (other.CompareTag("Food"))
                 {
                     Grow();
+
                 }
-                else if (other.CompareTag("Obstacle") || other.CompareTag("Player"))
+                else if (other.CompareTag("Obstacle"))
                 {
                     if (!_isCooldownActive)
                     {
                         GameOver();
                     }
                 }
-            }
-            else if (other.CompareTag("PowerUp"))
-            {
-                PowerUp powerUp = other.GetComponent<PowerUp>();
-                if (powerUp != null)
+                else if (other.CompareTag("PowerUp"))
                 {
-                    // Check if the power-up is a score booster
-                    if (powerUp.powerUpType == PowerUp.PowerUpType.ScoreBoost)
+                    ActivatePowerUp(other.GetComponent<PowerUp>().powerUpType);
+
+                }
+                else if (other.CompareTag("MassBurner"))
+                {
+                    if (!_isMassBurnerActive)
                     {
-                        ActivateScoreBoost(); // Activate the score booster
+                        _isMassBurnerActive = true;
+                        StartCoroutine(DeactivateMassBurnerCoroutine());
+
+                        while (_segments.Count > 2)
+                        {
+                            Transform segmentToRemove = _segments[_segments.Count - 1];
+                            _segments.Remove(segmentToRemove);
+                            Destroy(segmentToRemove.gameObject);
+                        }
+
+                        int scoreToDecrease = (_score >= foodScoreValue * 2) ? foodScoreValue * 2 : _score;
+                        _score -= scoreToDecrease;
+                        UpdateScoreText();
                     }
-                    
                 }
             }
         }
     }
-
 
     public void ActivatePowerUp(PowerUp.PowerUpType powerUpType)
     {
@@ -209,6 +249,13 @@ public class Snake : MonoBehaviour
         Debug.Log("Score Boost deactivated!");
     }
 
+    private IEnumerator DeactivateMassBurnerCoroutine()
+    {
+        yield return new WaitForSeconds(_massBurnerDuration);
+        _isMassBurnerActive = false;
+        Debug.Log("Mass Burner deactivated!");
+    }
+
     private void ActivateShield()
     {
         _isShieldActive = true;
@@ -225,17 +272,16 @@ public class Snake : MonoBehaviour
 
     private void ActivateScoreBoost()
     {
-        if (!_isScoreBoostActive) // Check if score boost is not already active
+        if (!_isScoreBoostActive)
         {
             _isScoreBoostActive = true;
             Debug.Log("Score Boost activated!");
-            IncrementScore(foodScoreValue); // Increment score with +10
-            Grow(); // Grow the snake
+            IncrementScore(foodScoreValue);
+            Grow();
             StartCoroutine(DeactivateScoreBoostCoroutine());
         }
         else
         {
-            // Score boost is already active
             Debug.Log("Score Boost is already active!");
         }
     }

@@ -13,18 +13,27 @@ public class PowerUp : MonoBehaviour
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        if (collision.CompareTag("Player"))
-        {
-            Snake snake = collision.GetComponent<Snake>();
-            if (snake != null)
-            {
-                // Instead of calling methods directly, let the Snake class handle power-up activation
-                snake.ActivatePowerUp(powerUpType);
 
-                // Deactivate the power-up object instead of destroying it
-                gameObject.SetActive(false);
-            }
+        Snake snake = collision.GetComponent<Snake>();
+        if (snake != null)
+        {
+            // Instead of calling methods directly, let the Snake class handle power-up activation
+            snake.ActivatePowerUp(powerUpType);
+
+            // Deactivate the power-up object instead of destroying it
+            gameObject.SetActive(false);
+        }
+
+        Snake snake2 = collision.GetComponent<Snake>();
+        if (snake != null)
+        {
+            // Instead of calling methods directly, let the Snake class handle power-up activation
+            snake.ActivatePowerUp(powerUpType);
+
+            // Deactivate the power-up object instead of destroying it
+            gameObject.SetActive(false);
         }
     }
 }
+
 
