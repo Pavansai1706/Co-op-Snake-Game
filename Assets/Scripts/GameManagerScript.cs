@@ -16,10 +16,10 @@ public class GameManagerScript : MonoBehaviour
     }
    public void playGame()
     {
-        SceneManager.LoadSceneAsync(2);
+        SceneManager.LoadSceneAsync(1);
     }
     public void loadGame()
     {
-        SceneManager.LoadSceneAsync(1);
+        SceneManager.LoadSceneAsync(2);
     }
 }
