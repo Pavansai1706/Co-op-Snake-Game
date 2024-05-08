@@ -33,13 +33,20 @@ public class Snake : MonoBehaviour
     [SerializeField] private TextMeshProUGUI powerUpText; // UI Text object for power-up messages
     [SerializeField] private GameObject gameOverPanel;
 
-  
+    private const string SCORE = "score";
+    private const string HIGHSCORE = "Highscore";
+    private const string PLAYER = "Player";
+    private const string FOOD = "Food";
+    private const string OBSTACLE = "Obstacle";
+    private const string POWERUP = "PowerUp";
+    private const string MASSBURNER = "MassBurner";
+
 
     private void Start()
     {
         ResetState();
         _screenBounds = Camera.main.ScreenToWorldPoint(new Vector3(Screen.width, Screen.height, Camera.main.transform.position.z));
-        _highScore = PlayerPrefs.GetInt("HighScore", 0);
+        _highScore = PlayerPrefs.GetInt(HIGHSCORE, 0);
         UpdateHighScoreText();
         powerUpText.text = ""; // Initially clear the power-up text
     }
@@ -48,7 +55,7 @@ public class Snake : MonoBehaviour
     {
         if (!_isGameOver)
         {
-            if (gameObject.tag == "Player")
+            if (gameObject.tag == PLAYER)
             {
                 if (Input.GetKeyDown(KeyCode.W) && _direction != Vector2.down)
                 {
@@ -175,24 +182,24 @@ public class Snake : MonoBehaviour
         {
             if (!_isShieldActive)
             {
-                if (other.CompareTag("Food"))
+                if (other.CompareTag(FOOD))
                 {
                     Grow();
 
                 }
-                else if (other.CompareTag("Obstacle"))
+                else if (other.CompareTag(OBSTACLE))
                 {
                     if (!_isCooldownActive)
                     {
                         GameOver();
                     }
                 }
-                else if (other.CompareTag("PowerUp"))
+                else if (other.CompareTag(POWERUP))
                 {
                     ActivatePowerUp(other.GetComponent<PowerUp>().powerUpType);
 
                 }
-                else if (other.CompareTag("MassBurner"))
+                else if (other.CompareTag(MASSBURNER))
                 {
                     if (!_isMassBurnerActive)
                     {
@@ -310,7 +317,7 @@ public class Snake : MonoBehaviour
     {
         if (scoreText != null)
         {
-            scoreText.text = "Score: " + _score.ToString();
+            scoreText.text = SCORE + _score.ToString();
         }
     }
     
@@ -318,20 +325,20 @@ public class Snake : MonoBehaviour
     {
         if (highScoreText != null)
         {
-            highScoreText.text = "High Score: " + _highScore.ToString();
+            highScoreText.text = HIGHSCORE + _highScore.ToString();
         }
     }
 
     private void SaveHighScore()
     {
-        PlayerPrefs.SetInt("HighScore", _highScore);
+        PlayerPrefs.SetInt(HIGHSCORE, _highScore);
         PlayerPrefs.Save();
     }
     private void ResetHighScore()
     {
         _highScore = 0;
         UpdateHighScoreText();
-        PlayerPrefs.SetInt("HighScore", _highScore);
+        PlayerPrefs.SetInt(HIGHSCORE, _highScore);
         PlayerPrefs.Save();
     }
     private void GameOver()

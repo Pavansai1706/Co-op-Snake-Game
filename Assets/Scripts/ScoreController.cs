@@ -10,10 +10,12 @@ public class ScoreController : MonoBehaviour
     private int score = 0;
     private int HighScore;
 
+    private const string HIGHSCORE = "HighScore";
+
     private void Start()
     {
         if (highScoreText != null)
-            highScoreText.text = " HighScore : " + PlayerPrefs.GetInt("HighScore", 0).ToString();
+            highScoreText.text = HIGHSCORE + PlayerPrefs.GetInt(HIGHSCORE, 0).ToString();
     }
 
     public void AddScore(int increament)
@@ -35,13 +37,13 @@ public class ScoreController : MonoBehaviour
 
     public int GetHighScore()
     {
-        HighScore = PlayerPrefs.GetInt("HighScore", 0);
+        HighScore = PlayerPrefs.GetInt(HIGHSCORE, 0);
         if (score > HighScore)
         {
-            PlayerPrefs.SetInt("HighScore", score);
+            PlayerPrefs.SetInt(HIGHSCORE, score);
             PlayerPrefs.Save();
             if (highScoreText != null)
-                highScoreText.text = "HighScore : " + score.ToString();
+                highScoreText.text = HIGHSCORE + score.ToString();
         }
         return HighScore;
     }
