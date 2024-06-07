@@ -6,6 +6,9 @@ TagManager:
   tags:
   - Food
   - Obstacle
+  - PowerUp
+  - Player2
+  - MassBurner
   layers:
   - Default
   - TransparentFX

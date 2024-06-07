@@ -1,53 +1,97 @@
-using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
+using System.Collections;
+using System.Collections.Generic;
 
 public class Snake : MonoBehaviour
 {
     private Vector2 _direction = Vector2.right;
     private Vector2 _screenBounds;
-    private int _score = 0;
-    private int _highScore = 0; // Add high score variable
-    private bool _isGameOver = false;
-
     private List<Transform> _segments = new List<Transform>();
+    private int _score = 0;
+    private int _highScore = 0;
+    private bool _isGameOver = false;
+    private bool _isShieldActive = false;
+    private bool _isSpeedUpActive = false;
+    private bool _isScoreBoostActive = false;
+    private bool _isMassBurnerActive = false;
+    private float _speedUpDuration = 5f;
+    private float _speedUpMultiplier = 2f;
+    private float _scoreBoostDuration = 10f;
+    private float _massBurnerDuration = 10f;
+    private bool _isCooldownActive = false;
+    private float _deathCooldownDuration = 2f;
+    private Transform _foodInstance;
+
     [SerializeField] private int initialSize = 3;
     [SerializeField] private Transform segmentPrefab;
-    [SerializeField] private int scoreValue = 10;
+    [SerializeField] private GameObject foodPrefab;
+    [SerializeField] private int foodScoreValue = 10;
+    [SerializeField] private int scoreBoosterMultiplier = 2;
     [SerializeField] private TextMeshProUGUI scoreText;
-    [SerializeField] private TextMeshProUGUI highScoreText; // Reference to high score text
-    [SerializeField] private GameObject gameOverPanel; // Reference to game over UI panel
+    [SerializeField] private TextMeshProUGUI highScoreText;
+    [SerializeField] private TextMeshProUGUI powerUpText; // UI Text object for power-up messages
+    [SerializeField] private GameObject gameOverPanel;
+
+    private const string SCORE = "score";
+    private const string HIGHSCORE = "Highscore";
+    private const string PLAYER = "Player";
+    private const string FOOD = "Food";
+    private const string OBSTACLE = "Obstacle";
+    private const string POWERUP = "PowerUp";
+    private const string MASSBURNER = "MassBurner";
+
 
     private void Start()
     {
         ResetState();
-
         _screenBounds = Camera.main.ScreenToWorldPoint(new Vector3(Screen.width, Screen.height, Camera.main.transform.position.z));
-
-        // Load high score from PlayerPrefs
-        _highScore = PlayerPrefs.GetInt("HighScore", 0);
+        _highScore = PlayerPrefs.GetInt(HIGHSCORE, 0);
         UpdateHighScoreText();
+        powerUpText.text = ""; // Initially clear the power-up text
     }
 
     private void Update()
     {
         if (!_isGameOver)
         {
-            if (Input.GetKeyDown(KeyCode.W))
+            if (gameObject.tag == PLAYER)
             {
-                _direction = Vector2.up;
+                if (Input.GetKeyDown(KeyCode.W) && _direction != Vector2.down)
+                {
+                    _direction = Vector2.up;
+                }
+                else if (Input.GetKeyDown(KeyCode.S) && _direction != Vector2.up)
+                {
+                    _direction = Vector2.down;
+                }
+                else if (Input.GetKeyDown(KeyCode.A) && _direction != Vector2.right)
+                {
+                    _direction = Vector2.left;
+                }
+                else if (Input.GetKeyDown(KeyCode.D) && _direction != Vector2.left)
+                {
+                    _direction = Vector2.right;
+                }
             }
-            else if (Input.GetKeyDown(KeyCode.S))
+            else if (gameObject.tag == "Player2")
             {
-                _direction = Vector2.down;
-            }
-            else if (Input.GetKeyDown(KeyCode.A))
-            {
-                _direction = Vector2.left;
-            }
-            else if (Input.GetKeyDown(KeyCode.D))
-            {
-                _direction = Vector2.right;
+                if (Input.GetKeyDown(KeyCode.UpArrow) && _direction != Vector2.down)
+                {
+                    _direction = Vector2.up;
+                }
+                else if (Input.GetKeyDown(KeyCode.DownArrow) && _direction != Vector2.up)
+                {
+                    _direction = Vector2.down;
+                }
+                else if (Input.GetKeyDown(KeyCode.LeftArrow) && _direction != Vector2.right)
+                {
+                    _direction = Vector2.left;
+                }
+                else if (Input.GetKeyDown(KeyCode.RightArrow) && _direction != Vector2.left)
+                {
+                    _direction = Vector2.right;
+                }
             }
         }
     }
@@ -56,15 +100,15 @@ public class Snake : MonoBehaviour
     {
         if (!_isGameOver)
         {
+            float movementSpeed = (_isSpeedUpActive) ? _speedUpMultiplier : 1f;
+
             for (int i = _segments.Count - 1; i > 0; i--)
             {
                 _segments[i].position = _segments[i - 1].position;
             }
 
-            // Calculate the new position based on the current position and direction
-            Vector3 newPosition = transform.position + (Vector3)_direction;
+            Vector3 newPosition = transform.position + (Vector3)_direction * movementSpeed;
 
-            // Wrap around the screen if the snake moves beyond the screen boundaries
             if (newPosition.x > _screenBounds.x)
                 newPosition.x = -_screenBounds.x;
             else if (newPosition.x < -_screenBounds.x)
@@ -75,23 +119,24 @@ public class Snake : MonoBehaviour
             else if (newPosition.y < -_screenBounds.y)
                 newPosition.y = _screenBounds.y;
 
-            // Update the position
             transform.position = newPosition;
         }
     }
 
     private void Grow()
     {
-        Transform segment = Instantiate(this.segmentPrefab);
+        Transform segment = Instantiate(segmentPrefab);
         segment.position = _segments[_segments.Count - 1].position;
-
         _segments.Add(segment);
 
-        // Increment score
-        _score += scoreValue;
+        IncrementScore(_isScoreBoostActive ? foodScoreValue * scoreBoosterMultiplier : foodScoreValue);
+    }
+
+    private void IncrementScore(int value)
+    {
+        _score += value;
         UpdateScoreText();
 
-        // Update high score if needed
         if (_score > _highScore)
         {
             _highScore = _score;
@@ -106,20 +151,24 @@ public class Snake : MonoBehaviour
             Destroy(_segments[i].gameObject);
         }
         _segments.Clear();
-        _segments.Add(this.transform);
+        _segments.Add(transform);
 
-        for (int i = 1; i < this.initialSize; i++)
+        for (int i = 1; i < initialSize; i++)
         {
-            _segments.Add(Instantiate(this.segmentPrefab));
+            _segments.Add(Instantiate(segmentPrefab));
         }
 
-        this.transform.position = Vector3.zero;
+        if (gameObject.tag == "Player2")
+        {
+            transform.position = new Vector3(5f, 0f, 0f);
+        }
+        else
+        {
+            transform.position = Vector3.zero;
+        }
 
-        // Reset score
         _score = 0;
         UpdateScoreText();
-
-        // Reset game over state
         _isGameOver = false;
         if (gameOverPanel != null)
         {
@@ -131,39 +180,167 @@ public class Snake : MonoBehaviour
     {
         if (!_isGameOver)
         {
-            if (other.tag == "Food")
+            if (!_isShieldActive)
             {
-                Grow();
-            }
-            else if (other.tag == "Obstacle" || other.tag == "SnakeBody")
-            {
-                GameOver();
+                if (other.CompareTag(FOOD))
+                {
+                    Grow();
+
+                }
+                else if (other.CompareTag(OBSTACLE))
+                {
+                    if (!_isCooldownActive)
+                    {
+                        GameOver();
+                    }
+                }
+                else if (other.CompareTag(POWERUP))
+                {
+                    ActivatePowerUp(other.GetComponent<PowerUp>().powerUpType);
+
+                }
+                else if (other.CompareTag(MASSBURNER))
+                {
+                    if (!_isMassBurnerActive)
+                    {
+                        _isMassBurnerActive = true;
+                        StartCoroutine(DeactivateMassBurnerCoroutine());
+
+                        while (_segments.Count > 2)
+                        {
+                            Transform segmentToRemove = _segments[_segments.Count - 1];
+                            _segments.Remove(segmentToRemove);
+                            Destroy(segmentToRemove.gameObject);
+                        }
+
+                        int scoreToDecrease = (_score >= foodScoreValue * 2) ? foodScoreValue * 2 : _score;
+                        _score -= scoreToDecrease;
+                        UpdateScoreText();
+                    }
+                }
             }
         }
+    }
+
+    public void ActivatePowerUp(PowerUp.PowerUpType powerUpType)
+    {
+        switch (powerUpType)
+        {
+            case PowerUp.PowerUpType.Shield:
+                ActivateShield();
+                break;
+            case PowerUp.PowerUpType.ScoreBoost:
+                ActivateScoreBoost();
+                break;
+            case PowerUp.PowerUpType.Speed:
+                ActivateSpeedUp();
+                break;
+        }
+    }
+
+    private IEnumerator DeactivateShieldCoroutine()
+    {
+        yield return new WaitForSeconds(_deathCooldownDuration);
+        _isShieldActive = false;
+        
+    }
+
+    private IEnumerator DeactivateSpeedUpCoroutine()
+    {
+        yield return new WaitForSeconds(_speedUpDuration);
+        _isSpeedUpActive = false;
+        
+    }
+
+    private IEnumerator DeactivateScoreBoostCoroutine()
+    {
+        yield return new WaitForSeconds(_scoreBoostDuration);
+        _isScoreBoostActive = false;
+       
+    }
+
+    private IEnumerator DeactivateMassBurnerCoroutine()
+    {
+        yield return new WaitForSeconds(_massBurnerDuration);
+        _isMassBurnerActive = false;
+        
+    }
+
+    private void ActivateShield()
+    {
+        _isShieldActive = true;
+        powerUpText.text = "Shield Activated!";
+        StartCoroutine(ClearPowerUpText());
+        StartCoroutine(DeactivateShieldCoroutine());
+    }
+
+    private void ActivateSpeedUp()
+    {
+        _isSpeedUpActive = true;
+        powerUpText.text = "Speed Up Activated!";
+        StartCoroutine(ClearPowerUpText());
+        StartCoroutine(DeactivateSpeedUpCoroutine());
+    }
+
+    private void ActivateScoreBoost()
+    {
+        if (!_isScoreBoostActive)
+        {
+            _isScoreBoostActive = true;
+            powerUpText.text = "Score Boost Activated!";
+            StartCoroutine(ClearPowerUpText());
+            IncrementScore(foodScoreValue);
+            Grow();
+            StartCoroutine(DeactivateScoreBoostCoroutine());
+        }
+        else
+        {
+            powerUpText.text = "Score Boost is already active!";
+            StartCoroutine(ClearPowerUpText());
+        }
+    }
+
+    private IEnumerator ClearPowerUpText()
+    {
+        yield return new WaitForSeconds(2f); // Adjust the duration as needed
+        powerUpText.text = "";
+    }
+
+    private IEnumerator DeathCooldown()
+    {
+        _isCooldownActive = true;
+        yield return new WaitForSeconds(_deathCooldownDuration);
+        _isCooldownActive = false;
     }
 
     private void UpdateScoreText()
     {
         if (scoreText != null)
         {
-            scoreText.text = "Score: " + _score.ToString();
+            scoreText.text = SCORE + _score.ToString();
         }
     }
-
+    
     private void UpdateHighScoreText()
     {
         if (highScoreText != null)
         {
-            highScoreText.text = "High Score: " + _highScore.ToString();
+            highScoreText.text = HIGHSCORE + _highScore.ToString();
         }
     }
 
     private void SaveHighScore()
     {
-        PlayerPrefs.SetInt("HighScore", _highScore);
+        PlayerPrefs.SetInt(HIGHSCORE, _highScore);
         PlayerPrefs.Save();
     }
-
+    private void ResetHighScore()
+    {
+        _highScore = 0;
+        UpdateHighScoreText();
+        PlayerPrefs.SetInt(HIGHSCORE, _highScore);
+        PlayerPrefs.Save();
+    }
     private void GameOver()
     {
         _isGameOver = true;
@@ -171,11 +348,11 @@ public class Snake : MonoBehaviour
         {
             gameOverPanel.SetActive(true);
         }
-        SaveHighScore(); // Save high score when game over
+        SaveHighScore();
     }
 
     private void OnDestroy()
     {
-        SaveHighScore(); // Save high score when the game object is destroyed (e.g., when quitting the game)
+        SaveHighScore();
     }
 }
